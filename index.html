@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Voice Translator Pro</title>
+    <title>AI Universal Voice Translator Pro</title>
     <!-- Manifest PWA -->
     <link rel="manifest" href="manifest.json">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -12,8 +12,8 @@
 
     <!-- Header -->
     <header class="bg-slate-800 p-4 shadow-md text-center">
-        <h1 class="text-xl font-bold text-cyan-400">BTA Translator Pro</h1>
-        <p class="text-xs text-slate-400">Clear Articulation, AI Voice & Stable Recording</p>
+        <h1 class="text-xl font-bold text-cyan-400">AI Universal Translator Pro</h1>
+        <p class="text-xs text-slate-400">Clear Articulation, Male AI Voice & Stable Recording</p>
     </header>
 
     <!-- Main Content -->
@@ -111,7 +111,7 @@
 
     <!-- Footer -->
     <footer class="text-center p-3 text-xs text-slate-500 bg-slate-950">
-        AI Voice Pro - Clear Voice
+        AI Voice Pro - Clear Male Voice Engine
     </footer>
 
     <!-- Script Logika Utama -->
@@ -132,17 +132,23 @@
 
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
-        if ('speechSynthesis' in window) {
-            loadVoices();
-            window.speechSynthesis.onvoiceschanged = loadVoices;
+        function loadVoices() {
+            if ('speechSynthesis' in window) {
+                availableVoices = window.speechSynthesis.getVoices();
+            }
         }
 
-        function loadVoices() {
-            availableVoices = window.speechSynthesis.getVoices();
+        // Panggil pemuatan suara secara berkala & melalui event listener
+        loadVoices();
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.onvoiceschanged = function() {
+                loadVoices();
+            };
         }
 
         window.onload = function() {
             renderHistory();
+            loadVoices();
         };
 
         function toggleRecording() {
@@ -249,26 +255,44 @@
             }
         }
 
+        // --- SISTEM SUARA AI PRIA (MALE), ARTIKULASI OPTIMAL ---
         function speakTextAI(text, langCode) {
             if (!('speechSynthesis' in window)) return;
             window.speechSynthesis.cancel();
 
+            // Ambil daftar suara terbaru dari browser
+            availableVoices = window.speechSynthesis.getVoices();
+
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = langCode;
-            utterance.rate = 0.88; 
-            utterance.pitch = 0.95; 
+            
+            // Kecepatan diatur ke 0.85 untuk memperjelas artikulasi di Android
+            utterance.rate = 0.85; 
+            // Pitch 0.92 memberikan intonasi suara pria yang lebih dalam dan tegas
+            utterance.pitch = 0.92; 
 
-            if (availableVoices.length === 0) {
-                loadVoices();
-            }
+            const langShort = langCode.split('-')[0].toLowerCase();
 
-            let selectedVoice = availableVoices.find(voice => 
-                voice.lang.toLowerCase().includes(langCode.toLowerCase()) && 
-                (voice.name.toLowerCase().includes('male') || voice.name.toLowerCase().includes('david') || voice.name.toLowerCase().includes('george') || voice.name.toLowerCase().includes('giorgio') || voice.name.toLowerCase().includes('smarthome'))
-            );
+            // Cari profil suara pria berdasarkan kata kunci pencarian yang komprehensif
+            let selectedVoice = availableVoices.find(voice => {
+                const voiceLang = voice.lang.toLowerCase();
+                const voiceName = voice.name.toLowerCase();
+                const matchesLang = voiceLang.includes(langCode.toLowerCase()) || voiceLang.includes(langShort);
+                const matchesMale = voiceName.includes('male') || 
+                                    voiceName.includes('david') || 
+                                    voiceName.includes('george') || 
+                                    voiceName.includes('pria') ||
+                                    voiceName.includes('laki') ||
+                                    voiceName.includes('smarthome') ||
+                                    voiceName.includes('natural') ||
+                                    voiceName.includes('-x-m'); // Penanda voice male pada Android TTS
 
+                return matchesLang && matchesMale;
+            });
+
+            // Jika suara pria spesifik tidak ditemukan, cari suara standar apapun untuk bahasa target
             if (!selectedVoice) {
-                selectedVoice = availableVoices.find(voice => voice.lang.toLowerCase().includes(langCode.toLowerCase()));
+                selectedVoice = availableVoices.find(voice => voice.lang.toLowerCase().includes(langCode.toLowerCase()) || voice.lang.toLowerCase().includes(langShort));
             }
 
             if (selectedVoice) {
