@@ -3,150 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voice AI Translator</title>
+    <title>AI Voice Polyglot Translator</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col justify-between">
 
     <!-- Header -->
     <header class="bg-slate-800 p-4 shadow-md text-center">
-        <h1 class="text-xl font-bold text-cyan-400">AI Voice Translator</h1>
-        <p class="text-xs text-slate-400">Suara ID ➔ Suara EN / TR</p>
+        <h1 class="text-xl font-bold text-cyan-400">AI Universal Translator</h1>
+        <p class="text-xs text-slate-400">ID, EN, TR, AR, JA, RU • Manual Recording & Storage</p>
     </header>
 
     <!-- Main Content -->
-    <main class="p-4 max-w-md mx-auto w-full space-y-6 flex-1 flex flex-col justify-center">
-        <!-- Target Bahasa -->
-        <div>
-            <label class="block text-sm font-medium mb-1 text-slate-300">Pilih Bahasa Target:</label>
-            <select id="targetLang" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white focus:outline-none focus:border-cyan-500">
-                <option value="en-US">Bahasa Inggris (English - US)</option>
-                <option value="tr-TR">Bahasa Turki (Türkçe)</option>
-            </select>
-        </div>
-
-        <!-- Tombol Mikrofon / Rekam Suara -->
-        <div class="text-center space-y-3">
-            <button id="micBtn" onclick="startListening()" class="w-24 h-24 bg-cyan-600 hover:bg-cyan-500 rounded-full mx-auto flex items-center justify-center shadow-lg transition-all transform active:scale-95">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                </svg>
-            </button>
-            <p id="statusText" class="text-sm text-cyan-300 font-medium">Ketuk mikrofon untuk mulai bicara (Bahasa Indonesia)</p>
-        </div>
-
-        <!-- Kotak Teks & Hasil -->
-        <div class="space-y-3">
-            <div class="bg-slate-800 border border-slate-700 rounded-lg p-3">
-                <span class="text-xs text-slate-400 block mb-1">Anda Mengucapkan:</span>
-                <p id="inputText" class="text-sm text-slate-200 italic">Belum ada suara...</p>
-            </div>
-
-            <div class="bg-slate-800 border border-slate-700 rounded-lg p-3">
-                <span class="text-xs text-cyan-400 block mb-1">Hasil Terjemahan & Suara AI:</span>
-                <p id="resultText" class="text-base text-cyan-300 font-semibold">Hasil terjemahan akan muncul di sini...</p>
-            </div>
-        </div>
-    </main>
-
-    <!-- Footer -->
-    <footer class="text-center p-3 text-xs text-slate-500 bg-slate-950">
-        Voice-Powered PWA Translator
-    </footer>
-
-    <!-- Script Logika Audio & Terjemahan -->
-    <script>
-        const statusText = document.getElementById('statusText');
-        const inputText = document.getElementById('inputText');
-        const resultText = document.getElementById('resultText');
-        const targetLangSelect = document.getElementById('targetLang');
-
-        // Cek dukungan Speech Recognition di Browser / Android WebView
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    <main class="p-4 max-w-md mx-auto w-full space-y-4 flex-1 flex flex-col justify-center">
         
-        function startListening() {
-            if (!SpeechRecognition) {
-                alert("Browser atau perangkat Anda tidak mendukung fitur pengenalan suara otomatis.");
-                return;
-            }
-
-            const recognition = new SpeechRecognition();
-            recognition.lang = 'id-ID'; // Set bahasa input ke Indonesia
-            recognition.interimResults = false;
-            recognition.maxAlternatives = 1;
-
-            recognition.onstart = function() {
-                statusText.innerText = "Mendengarkan... Silakan bicara sekarang.";
-                document.getElementById('micBtn').classList.add('bg-red-600', 'animate-pulse');
-            };
-
-            recognition.onresult = async function(event) {
-                const speechToText = event.results[0][0].transcript;
-                inputText.innerText = `"${speechToText}"`;
-                statusText.innerText = "Menerjemahkan & Memproses Suara AI...";
-                
-                // Panggil fungsi terjemahan dan text-to-speech
-                await translateAndSpeak(speechToText);
-            };
-
-            recognition.onerror = function(event) {
-                statusText.innerText = "Terjadi kesalahan pada mikrofon. Coba lagi.";
-                resetMicState();
-            };
-
-            recognition.onend = function() {
-                resetMicState();
-            };
-
-            recognition.start();
-        }
-
-        function resetMicState() {
-            document.getElementById('micBtn').classList.remove('bg-red-600', 'animate-pulse');
-            document.getElementById('micBtn').classList.add('bg-cyan-600');
-        }
-
-        async function translateAndSpeak(text) {
-            const fullTargetCode = targetLangSelect.value; // cth: 'en-US' atau 'tr-TR'
-            const shortLangCode = fullTargetCode.split('-')[0]; // cth: 'en' atau 'tr'
-
-            try {
-                // 1. Ambil terjemahan dari API MyMemory
-                const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=id|${shortLangCode}`);
-                const data = await response.json();
-
-                if (data && data.responseData) {
-                    const translated = data.responseData.translatedText;
-                    resultText.innerText = translated;
-                    statusText.innerText = "Selesai!";
-
-                    // 2. Jalankan Sintesis Suara AI (Text-to-Speech)
-                    speakText(translated, fullTargetCode);
-                } else {
-                    resultText.innerText = "Gagal menerjemahkan.";
-                }
-            } catch (error) {
-                resultText.innerText = "Kesalahan jaringan saat menerjemahkan.";
-                console.error(error);
-            }
-        }
-
-        function speakText(text, langCode) {
-            if (!('speechSynthesis' in window)) {
-                console.warn("Text-to-speech tidak didukung di perangkat ini.");
-                return;
-            }
-
-            // Hentikan suara yang sedang berjalan sebelumnya
-            window.speechSynthesis.cancel();
-
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = langCode;
-            utterance.rate = 1.0; // Kecepatan normal
-            utterance.pitch = 1.0; // Nada suara
-
-            window.speechSynthesis.speak(utterance);
-        }
-    </script>
-</body>
-</html>
+        <!-- Pilihan Bahasa (Source & Target) -->
+        <div class="grid grid-cols-2 gap-3">
+            <div>
+                <label class="block text-xs font-medium mb-1 text-slate-300">Dari (Input):</label>
+                <select id="sourceLang" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-cyan-500">
+                    <option value="id-ID">Indonesia</option>
+                    <option value="en-US">English (Inggris)</option>
+                    <option value="tr-TR">Türkçe (Turki)</option>
+                    <option value="ar-SA">العربية (Arab)</option>
+                    <option value="ja-JP">日本語 (Jepang)</option>
+                    <option value="ru-RU">Русский (Rusia)</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-medium mb-1 text-slate-300">Ke (Target):</label>
+                <select id="targetLang" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-cyan-500">
+                    <option value="en-US">English (Inggris)</option>
+                    <option value="id-ID
