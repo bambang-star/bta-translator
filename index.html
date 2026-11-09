@@ -4,7 +4,7 @@
     <link rel="manifest" href="manifest.json">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Voice Polyglot Translator with Replay & Copy</title>
+    <title>AI Universal Voice Translator</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col justify-between">
@@ -12,7 +12,7 @@
     <!-- Header -->
     <header class="bg-slate-800 p-4 shadow-md text-center">
         <h1 class="text-xl font-bold text-cyan-400">BTA Translator</h1>
-        <p class="text-xs text-slate-400">Multi-Language, Replay Voice, History & Copy</p>
+        <p class="text-xs text-slate-400">Multi-Language, Stable Manual Voice & AI Speech</p>
     </header>
 
     <!-- Main Content -->
@@ -51,7 +51,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                 </svg>
             </button>
-            <p id="statusText" class="text-xs text-cyan-300 font-medium">Ketuk untuk mulai merekam, ketuk lagi untuk berhenti & terjemahkan.</p>
+            <p id="statusText" class="text-xs text-cyan-300 font-medium">Ketuk untuk mulai merekam, berbicara bebas, ketuk lagi untuk menerjemahkan.</p>
         </div>
 
         <!-- Kotak Teks & Hasil -->
@@ -110,13 +110,15 @@
 
     <!-- Footer -->
     <footer class="text-center p-3 text-xs text-slate-500 bg-slate-950">
-        Multi-Language Voice PWA with Replay Feature
+        Multi-Language Voice PWA - Stable Accumulative Recording
     </footer>
 
     <!-- Script Logika Utama -->
     <script>
         let recognition = null;
         let isRecording = false;
+        let finalTranscript = ''; // Menyimpan teks akumulasi agar tidak hilang saat terjeda
+        
         const statusText = document.getElementById('statusText');
         const inputText = document.getElementById('inputText');
         const resultText = document.getElementById('resultText');
@@ -139,48 +141,69 @@
             }
 
             if (!isRecording) {
+                // --- MULAI MEREKAM ---
                 recognition = new SpeechRecognition();
                 recognition.lang = sourceLangSelect.value;
                 recognition.continuous = true;
                 recognition.interimResults = true;
 
+                finalTranscript = ''; // Reset transkrip awal sesi baru
+
                 recognition.onstart = function() {
                     isRecording = true;
-                    statusText.innerText = "Merekam suara... Ketuk tombol lagi untuk berhenti.";
+                    statusText.innerText = "Merekam... Silakan bicara (bisa dijeda). Ketuk lagi jika sudah selesai.";
                     micBtn.classList.remove('bg-cyan-600', 'hover:bg-cyan-500');
                     micBtn.classList.add('bg-red-600', 'animate-pulse');
                     inputText.innerText = "Mendengarkan...";
                 };
 
                 recognition.onresult = function(event) {
-                    let transcript = '';
+                    let interimTranscript = '';
                     for (let i = event.resultIndex; i < event.results.length; ++i) {
-                        transcript += event.results[i][0].transcript;
+                        if (event.results[i].isFinal) {
+                            finalTranscript += event.results[i][0].transcript + ' ';
+                        } else {
+                            interimTranscript += event.results[i][0].transcript;
+                        }
                     }
-                    inputText.innerText = `"${transcript}"`;
+                    
+                    // Gabungkan teks permanen dan teks sementara agar tetap tampil di layar
+                    let currentDisplay = finalTranscript + interimTranscript;
+                    if (currentDisplay.trim() !== '') {
+                        inputText.innerText = `"${currentDisplay.trim()}"`;
+                    }
                 };
 
                 recognition.onerror = function(event) {
-                    statusText.innerText = "Kesalahan mikrofon: " + event.error;
-                    stopRecordingState();
+                    console.warn("Speech recognition error: ", event.error);
                 };
 
+                // Jika sistem Android/Browser tiba-tiba menutup sesi karena keheningan lama, otomatis hidupkan kembali (auto-restart) selama tombol belum ditekan manual
                 recognition.onend = function() {
                     if (isRecording) {
-                        stopRecordingState();
+                        try {
+                            recognition.start();
+                        } catch (e) {
+                            console.log("Restart rekaman dilanjutkan...");
+                        }
                     }
                 };
 
                 recognition.start();
+
             } else {
+                // --- BERHENTI MEREKAM SECARA MANUAL & PROSES TRANSLATE ---
+                isRecording = false;
                 if (recognition) {
+                    recognition.onend = null; // Matikan auto-restart
                     recognition.stop();
                 }
+                
                 stopRecordingState();
                 
-                const finalSpeechText = inputText.innerText.replace(/"/g, '');
-                if (finalSpeechText && finalSpeechText !== "Belum ada rekaman..." && finalSpeechText !== "Mendengarkan...") {
-                    translateAndSpeak(finalSpeechText);
+                const fullTextToTranslate = inputText.innerText.replace(/"/g, '').trim();
+                if (fullTextToTranslate && fullTextToTranslate !== "Belum ada rekaman..." && fullTextToTranslate !== "Mendengarkan...") {
+                    translateAndSpeak(fullTextToTranslate);
                 } else {
                     statusText.innerText = "Tidak ada suara yang terekam.";
                 }
@@ -188,7 +211,6 @@
         }
 
         function stopRecordingState() {
-            isRecording = false;
             micBtn.classList.remove('bg-red-600', 'animate-pulse');
             micBtn.classList.add('bg-cyan-600');
         }
@@ -230,7 +252,6 @@
             window.speechSynthesis.speak(utterance);
         }
 
-        // --- FITUR REPLAY SUARA ---
         function replayVoice() {
             const textToSpeak = resultText.innerText;
             const targetFullCode = targetLangSelect.value;
@@ -243,7 +264,6 @@
             speakText(textToSpeak, targetFullCode);
         }
 
-        // --- FITUR SALIN KE CLIPBOARD ---
         function copyToClipboard() {
             const textToCopy = resultText.innerText;
             if (!textToCopy || textToCopy.includes("Hasil terjemahan akan muncul")) {
@@ -258,7 +278,6 @@
                 }, 2000);
             }).catch(err => {
                 console.error("Gagal menyalin teks: ", err);
-                alert("Gagal menyalin teks ke clipboard.");
             });
         }
 
