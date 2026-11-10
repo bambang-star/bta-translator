@@ -130,23 +130,39 @@
         }
 
         // 2. Pemutar Suara AI Full Online (Google Cloud TTS)
-        function speakText(text, langCode) {
-            if (!text || text === "-") return;
+        // Perbaikan Fungsi Pemutar Suara AI Online yang Lebih Stabil
+function speakText(text, langCode) {
+    if (!text || text === "-") return;
 
-            if (window.currentAudio) {
-                window.currentAudio.pause();
-                window.currentAudio.currentTime = 0;
-            }
+    // Hentikan dan bersihkan audio sebelumnya jika ada
+    if (window.currentAudio) {
+        window.currentAudio.pause();
+        window.currentAudio = null;
+    }
 
-            const shortLang = langCode ? langCode.split('-')[0] : 'en';
-            const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=${shortLang}&client=tw-ob`;
+    const shortLang = langCode ? langCode.split('-')[0] : 'en';
+    const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=${shortLang}&client=tw-ob`;
 
-            window.currentAudio = new Audio(ttsUrl);
-            window.currentAudio.play().catch(error => {
-                console.error("Gagal memutar audio AI Online:", error);
-                alert("Gagal memutar suara. Pastikan perangkat terhubung ke internet.");
+    // Buat elemen audio baru
+    const audio = new Audio();
+    audio.crossOrigin = "anonymous";
+    audio.src = ttsUrl;
+    
+    window.currentAudio = audio;
+
+    // Coba putar audio dengan penanganan promise yang aman
+    audio.play().catch(error => {
+        console.warn("Gagal memutar otomatis, mencoba metode alternatif...", error);
+        
+        // Fallback: Buka atau muat ulang via interaksi elemen jika diblokir policy
+        setTimeout(() => {
+            audio.play().catch(err => {
+                console.error("Error fatal audio:", err);
+                alert("Gagal memutar suara. Pastikan koneksi internet stabil.");
             });
-        }
+        }, 200);
+    });
+}
 
         // 3. Fungsi Terjemahan Teks & Simpan Riwayat
         async function translateText() {
